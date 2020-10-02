@@ -1,0 +1,29 @@
+function [x,h]=MP_SElasticNet_Cone(A,b,Q,delta,alpha,iteration,fstar)
+[m,n]=size(A);
+x=ones(n,1);
+p=zeros(n+1,1);
+MM=sqrt(n+1)*norm(b,2)^2/(2*delta)+1;
+gamma=0.2;%2000;
+for i=1:iteration
+    xk=x;
+    pk=p;
+    dLxk=A'*(A*xk-b)+[((1-alpha)*(Q'+Q)*xk)';alpha*eye(n)]'*pk;
+    dLpk=[(1-alpha)*xk'*Q*xk-delta;alpha*xk];
+    hxk=xk-gamma*dLxk;
+    hpk_intern=pk+gamma*dLpk;
+    [hpkxx,hpky]=Proj_infty(hpk_intern(2:n+1),hpk_intern(1));
+    hpk=[hpky;hpkxx];
+    hpk=min(1,MM/norm(hpk,2))*hpk;
+    hdLxk=A'*(A*hxk-b)+[((1-alpha)*(Q'+Q)*hxk)';alpha*eye(n)]'*hpk;
+    hdLpk=[(1-alpha)*hxk'*Q*hxk-delta;alpha*hxk];
+    x=xk-gamma*hdLxk;
+    p_intern=pk+gamma*hdLpk;
+    [pxx,py]=Proj_infty(p_intern(2:n+1),p_intern(1));
+    p=[py;pxx];
+    p=min(1,MM/norm(p,2))*p;
+    %save informations;
+    h.obj(i)=abs((1/2)*norm(A*xk-b,2)^2-fstar);
+    h.constraint(i)=max(0,alpha*norm(xk,1)+(1-alpha)*xk'*Q*xk-delta);
+    h.relation(i)=norm(x-xk,2)/max(norm(x,2),1);
+    h.plus(i)=h.obj(i)+h.constraint(i);
+end

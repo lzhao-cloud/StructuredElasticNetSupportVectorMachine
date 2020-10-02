@@ -1,0 +1,58 @@
+i=2;sigma1=1;sigma2=0;
+m=100*i;n=1000*i;s=5*i;
+alpha=0.4;
+[A,b,Q,delta,x0]=GenerateSElasticNet(m,n,s,alpha,sigma1,sigma2);
+% Set up lambda, and run solver 
+[u_v,Objective_v] = Gurobi_SElasticNet(A,b,Q,delta,alpha);
+if Objective_v<=1e-8
+   Objective_v=0;
+end
+iteration = 4000;%4000;
+%delta=0.5;
+t00=cputime;
+[x_VAPP,h_VAPP] = VAPP_SElasticNet(A,b,Q,delta,alpha,iteration,Objective_v);
+t11=cputime-t00;
+t000=cputime;
+[x_VAPP_Cone,h_VAPP_Cone] = VAPP_SElasticNet_Cone(A,b,Q,delta,alpha,iteration,Objective_v);
+t111=cputime-t000;
+%t22=cputime;
+%[x_APD,h_APD] = APD_SElasticNet_Cone(A,b,Q,delta,alpha,iteration);
+%t33=cputime-t22;
+t44=cputime;
+[x_MP,h_MP] = MP_SElasticNet_Cone(A,b,Q,delta,alpha,iteration,Objective_v);
+t55=cputime-t44;
+
+figure(1); 
+plot(1:n,x0,'ro',1:n,x_VAPP,'b*');
+legend('Original coefficients', 'Structured Elastic Net Recovered coefficients');
+figure(2); 
+semilogy(1:iteration,h_VAPP.obj,'b-.',1:iteration,h_VAPP_Cone.obj,'r-',1:iteration,h_MP.obj,'k--');%,1:iteration,h_MP.obj,'g-.');
+%semilogy(1:iteration,h_APD.obj,'b--');
+legend('VAPP-M-SEN-SVM-I','VAPP-M-SEN-SVM-C','Mirror-Prox-SEN-SVM-SP')%,'MP');%,'APD');
+%title('Objective Value');
+xlabel('iteration'); ylabel('suboptimality');
+figure(3);
+semilogy(1:iteration,h_VAPP.constraint,'b-.',1:iteration,h_VAPP_Cone.constraint,'r-',1:iteration,h_MP.constraint,'k--');%,1:iteration,h_MP.constraint,'g-.');
+%semilogy(1:iteration,h_APD.constraint,'b--');
+legend('VAPP-M-SEN-SVM-I','VAPP-M-SEN-SVM-C','Mirror-Prox-SEN-SVM-SP');%,'MP');%,'APD');
+%title('Objective Value');
+xlabel('iteration'); ylabel('feasibility');
+figure(4);
+semilogy(1:iteration,h_MP.relation,'b-.',1:iteration,h_VAPP_Cone.relation,'r-',1:iteration,h_MP.relation,'k--');%,1:iteration,h_MP.relation,'g-.');
+%semilogy(1:iteration,h_APD.relation,'b--');
+legend('VAPP-M-SEN-SVM-I','VAPP-M-SEN-SVM-C','Mirror-Prox-SEN-SVM-SP');%,'MP');%,'APD');
+%title('Objective Value');
+xlabel('iteration'); ylabel('relation');
+figure(5);
+xx=[t11/iteration;t111/iteration;t55/iteration];
+yy={'VAPP-M-SEN-SVM-I','VAPP-M-SEN-SVM-C','Mirror-Prox-SEN-SVM-SP'};
+bar(xx);
+set(gca,'XTickLabel',yy);
+ylabel('Time per iteration');
+figure(6); 
+semilogy(1:iteration,h_VAPP.plus,'b-.',1:iteration,h_VAPP_Cone.plus,'r-',1:iteration,h_MP.plus,'k--');%,1:iteration,h_MP.obj,'g-.');
+%semilogy(1:iteration,h_APD.obj,'b--');
+legend('VAPP-M-SEN-SVM-I','VAPP-M-SEN-SVM-C','Mirror-Prox-SEN-SVM-SP')%,'MP');%,'APD');
+%title('Objective Value');
+axis([0 iteration 1e-10 1e4]);
+xlabel('iteration'); ylabel('|F(u^k)-F(u^*)|+max\{0,\Theta(u^k)\}');
